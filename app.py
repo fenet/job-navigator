@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
 import sqlite3
 import re
 
@@ -101,7 +103,58 @@ if user_resume:
     st.dataframe(suggestions[['positionname', 'company', 'location', 'description']].head(10))
 
 st.set_page_config(page_title="Job Navigator", layout="wide")
+
 st.title("Job Market Insight Dashboard")
+st.title("📊 Job Market Insight Dashboard")
+
+# Normalize column names just in case
+df.columns = df.columns.str.lower().str.replace(" ", "_")
+
+# -------- Top Skills --------
+st.subheader("🛠️ Top In-Demand Skills")
+skills = ['Python', 'SQL', 'Power BI', 'Excel', 'Tableau', 'R', 'Java', 'C++', 'AWS', 'Azure', 'Git']
+
+if 'description' in df.columns:
+    skill_counts = {
+        skill: df['description'].str.contains(re.escape(skill), case=False, na=False).sum()
+        for skill in skills
+    }
+
+    skill_df = pd.DataFrame.from_dict(skill_counts, orient='index', columns=['Count']).sort_values(by='Count', ascending=False)
+    
+    fig1, ax1 = plt.subplots()
+    skill_df.plot(kind='bar', ax=ax1, legend=False, color='skyblue')
+    plt.ylabel("Number of Jobs")
+    st.pyplot(fig1)
+else:
+    st.warning("No 'description' column found to extract skills.")
+
+# -------- Top Locations --------
+if 'location' in df.columns:
+    st.subheader("📍 Top Job Locations")
+    top_locations = df['location'].value_counts().head(10)
+    st.bar_chart(top_locations)
+
+# -------- Top Companies --------
+if 'company' in df.columns:
+    st.subheader("🏢 Top Hiring Companies")
+    top_companies = df['company'].value_counts().head(10)
+    st.bar_chart(top_companies)
+
+# -------- WordCloud for Job Titles --------
+if 'positionname' in df.columns:
+    st.subheader("💬 Common Job Titles (WordCloud)")
+    text = ' '.join(df['positionname'].dropna().astype(str))
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+
+    fig2, ax2 = plt.subplots(figsize=(10, 5))
+    ax2.imshow(wordcloud, interpolation='bilinear')
+    ax2.axis('off')
+    st.pyplot(fig2)
+else:
+    st.warning("No 'positionname' column found to generate WordCloud.")
+
+
 st.markdown("Gain insights into job trends, skills in demand, and match your resume to real listings.")
 
 # --- Close DB Connection ---
